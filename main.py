@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 import numpy as np
 
 def learn_tensor():
@@ -89,7 +90,126 @@ def learn_back_propagation():
     print(w.grad) # dloss / dw
 
     # update weights
-    # more passes 
+    # more passes
+
+# doing gradient descent manually using numpy
+def learn_gradient_descent_np():
+
+    # we want to approximate a function where the output is input * 2
+    # f = w * x
+    # f = 2 * x
+    X = np.array([1,2,3,4], dtype=np.float32) # input
+    Y = np.array([2,4,6,8], dtype=np.float32) # expected output
+
+    w = 0.0 # initialize weights
+
+    # model prediction
+    def forward(x):
+        return w * x
+
+    # loss = mean squared error
+    # loss is how much error there is between output and expected output
+    def loss(y, y_predicted):
+        return ((y_predicted-y) ** 2).mean()
+
+    # gradient
+    # MSE = 1/N * (w*x - y) ** 2
+    # dJ/dw = 1/N 2x (w*x - y) # numerically computed derivative
+    def gradient(x,y,y_predicted):
+        return np.dot(2*x, y_predicted-y).mean()
+
+    print(f'prediction before training: f(5) = {forward(5):.3f}')
+
+    # training
+    learning_rate = 0.01
+    n_iterations = 20
+
+    for epoch in range (n_iterations): # training loop
+        # predictions = forward pass
+        y_pred = forward(X)
+
+        # loss
+        l = loss(Y, y_pred)
+
+        # gradient
+        dw = gradient(X,Y,y_pred)
+
+        # update weight
+        w -= learning_rate * dw # move in the direction of the gradient by learning_rate
+
+        # print data
+        print(f'epoch {epoch+1}: w = {w:.3f}, loss = {l:.8f}')
+
+    # in the end, we expect weight = 2
+    print(f'prediction after training: f(5) = {forward(5):.3f}')
+
+# doing gradient descent automatically with pytorch
+def learn_gradient_descent_torch():
+
+    # we want to approximate a function where the output is input * 2
+    # f = w * x
+    # f = 2 * x
+    X = torch.tensor([[1],[2],[3],[4]], dtype=torch.float32) # input
+    Y = torch.tensor([[2],[4],[6],[8]], dtype=torch.float32) # expected output
+
+    X_test = torch.tensor([5], dtype=torch.float32)
+
+    n_samples, n_features = X.shape # 4 samples, 1 feature per sample
+
+    model = nn.Linear(n_features, n_features) # 1 input, 1 output
+
+    # creating custom model
+    class LinearRegression(nn.Module):
+        def __init__(self, input_dim, output_dim):
+            super(LinearRegression, self).__init__()
+            # define layers
+            self.lin = nn.Linear(input_dim, output_dim)
+
+        def forward(self, x):
+            return self.lin(x)
+
+    model = LinearRegression(n_features, n_features)
+
+    print(f'prediction before training: f(5) = {model(X_test).item():.3f}')
+
+    # training
+    learning_rate = 0.01
+    n_iterations = 1000
+
+    # loss
+    # calculate loss using pytorch neural network package
+    loss = nn.MSELoss()
+
+    # optimizer
+    # SGD = stochastic gradient descent
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+
+    for epoch in range (n_iterations): # training loop
+        # predictions = forward pass
+        y_pred = model(X)
+
+        # loss
+        l = loss(Y, y_pred)
+
+        # gradient = backward pass
+        # calculate gradient automatically using pytorch
+        # backward calculation is not as exact as calculating numerically
+        l.backward() # dl/dw
+
+        # update weight
+        optimizer.step()
+
+        # zero gradients
+        optimizer.zero_grad()
+
+        # print data
+        [w,b] = model.parameters()
+        print(f'epoch {epoch+1}: w = {w[0][0].item():.3f}, loss = {l:.8f}')
+
+    # in the end, we expect weight = 2
+    print(f'prediction after training: f(5) = {model(X_test).item():.3f}')
+
+
 
 if __name__ == '__main__':
 
@@ -97,4 +217,5 @@ if __name__ == '__main__':
 
     # learn_tensor()
     #learn_gradient()
-    learn_back_propagation()
+    # learn_back_propagation()
+    learn_gradient_descent_torch()
