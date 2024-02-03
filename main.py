@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import numpy as np
+from sklearn import datasets
+import matplotlib.pyplot as plt
 
 def learn_tensor():
 
@@ -210,12 +212,58 @@ def learn_gradient_descent_torch():
     print(f'prediction after training: f(5) = {model(X_test).item():.3f}')
 
 
+def learn_linear_regression():
+    # prepare data
+    X_numpy, Y_numpy = datasets.make_regression(n_samples=100, n_features=1, noise=20, random_state=1) # get data from sklearn
+
+    X = torch.from_numpy(X_numpy.astype(np.float32)) # convert numpy to tensor
+    y = torch.from_numpy(Y_numpy.astype(np.float32))
+
+    y = y.view(y.shape[0], 1) # reshape y
+    n_samples, n_features = X.shape # n_features is dimension of input
+
+    # model
+    input_size = n_features
+    output_size = 1
+    model = nn.Linear(input_size, output_size)
+
+    # loss and optimizer
+    learning_rate = 0.01
+    criterion = nn.MSELoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate) # pass in model shape and learning rate to optimizer
+
+    # training loop
+    num_epoch = 100
+    for epoch in range(num_epoch):
+
+        # forward pass
+        y_predicted = model(X)
+
+        loss = criterion(y_predicted, y)
+
+        # backward pass
+        loss.backward()
+
+        # update
+        optimizer.step()
+
+        optimizer.zero_grad() # always reset gradient at the end of each training loop
+
+        print(f'epoch: {epoch+1}, loss = {loss.item():.4f}')
+
+    # plot
+    predicted = model(X).detach()
+    plt.plot(X_numpy, Y_numpy, 'ro')
+    plt.plot(X_numpy, predicted, 'b')
+    plt.show()
+
 
 if __name__ == '__main__':
 
     # https: // www.youtube.com / watch?v = c36lUUr864M
 
     # learn_tensor()
-    #learn_gradient()
+    # learn_gradient()
     # learn_back_propagation()
-    learn_gradient_descent_torch()
+    # learn_gradient_descent_torch()
+    learn_linear_regression()
