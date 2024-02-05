@@ -2,7 +2,10 @@ import torch
 import torch.nn as nn
 import numpy as np
 from sklearn import datasets
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
+
 
 def learn_tensor():
 
@@ -257,6 +260,84 @@ def learn_linear_regression():
     plt.plot(X_numpy, predicted, 'b')
     plt.show()
 
+def learn_logistics_regression():
+
+    ### prepare data
+    bc = datasets.load_breast_cancer() # dataset for predicting cancer based on input
+    X, y = bc.data, bc.target
+
+    n_samples, n_features = X.shape
+    print(X.shape) # 569 samples, 30 features (each input and output is a 30 length array)
+
+    X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.2, random_state=1234)
+
+    # scale features, make features have 0 mean, and standard variance
+    sc = StandardScaler() # always do this when doing logistics regression
+    X_train = sc.fit_transform(X_train)
+    X_test = sc.transform(X_test)
+
+    X_train = torch.from_numpy(X_train.astype(np.float32))
+    X_test = torch.from_numpy(X_test.astype(np.float32))
+    y_train = torch.from_numpy(y_train.astype(np.float32))
+    y_test = torch.from_numpy(y_test.astype(np.float32))
+
+    y_train = y_train.view(y_train.shape[0], 1) # convert n x 1 vector to 1 x n vector
+    y_test = y_test.view(y_test.shape[0], 1)
+
+    ### model
+    # f = wx + b, sigmoid function at the end
+    # model is a linear function
+    # sigmoid function will return value between 0 and 1
+
+    class LogisticRegression(nn.Module):
+
+        def __init__(self, n_input_features):
+            super(LogisticRegression, self).__init__()
+            self.linear = nn.Linear(n_input_features, 1) # 30 inputs, 1 output (output is boolean)
+
+        def forward(self, x):
+            y_predicted = torch.sigmoid(self.linear(x))
+            return y_predicted
+
+    model = LogisticRegression(n_features)
+
+    ### loss, optimizer
+
+    learning_rate = 0.01
+    criterion = nn.BCELoss() # binary cross entropy
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01) # stochastic gradient descent
+
+    ### training loop
+    num_epoch = 100
+    for epoch in range(num_epoch):
+
+        # forward pass and loss
+        y_predicted = model(X_train)
+        loss = criterion(y_predicted, y_train)
+
+        # backward pass
+        loss.backward()
+
+        # update
+        optimizer.step()
+
+        # zero gradients
+        optimizer.zero_grad()
+
+        if epoch % 10 == 0:
+            print(f'epoch: {epoch}, loss = {loss.item():.4f}')
+
+    with torch.no_grad(): # we don't want this to be part of the computation graph, no gradient tracking
+        y_predicted = model(X_test)
+        y_predicted_cls = y_predicted.round() # round to 0 or 1
+        acc = y_predicted_cls.eq(y_test).sum() / float(y_test.shape[0])
+        print(f'accuracy = {acc:.4f}')
+
+    for i in range(10): # printing out 10 test and outputs
+        print(X_test[i])
+        print(model(X_test[i]))
+        print(y_test[i])
+
 
 if __name__ == '__main__':
 
@@ -266,4 +347,5 @@ if __name__ == '__main__':
     # learn_gradient()
     # learn_back_propagation()
     # learn_gradient_descent_torch()
-    learn_linear_regression()
+    # learn_linear_regression()
+    learn_logistics_regression()
