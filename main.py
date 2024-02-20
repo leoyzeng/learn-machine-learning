@@ -1,3 +1,5 @@
+import math
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -5,6 +7,7 @@ from sklearn import datasets
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
+from torch.utils.data import Dataset, DataLoader
 
 
 def learn_tensor():
@@ -339,6 +342,50 @@ def learn_logistics_regression():
         print(y_test[i])
 
 
+def learn_dataset():
+
+    class WineDataset(Dataset):
+
+        def __init__(self):
+            # data loading
+            xy = np.loadtxt('./data/wine.csv', delimiter=",", dtype=np.float32, skiprows=1)
+            self.x = torch.from_numpy(xy[:,1:])
+            self.y = torch.from_numpy(xy[:,[0]]) # n_samples, 1
+            self.n_samples = xy.shape[0]
+
+        def __getitem__(self, index):
+            # return 1 data point
+            return self.x[index], self.y[index]
+
+        def __len__(self):
+            # length of dataset
+            return self.n_samples
+
+    dataset = WineDataset()
+    first_data = dataset[0]
+    features,labels = first_data
+    print(features, labels)
+
+    dataloader = DataLoader(dataset=dataset, batch_size=4, shuffle=True, num_workers=0) # batch_size = number of data points per iteration, num_workers is for multiprocessing
+    dataiter = iter(dataloader)
+
+    data = next(dataiter)
+    features, labels = data
+    print(features, labels)
+
+    # training loop
+    num_epochs = 2
+    total_samples = len(dataset)
+    n_iterations = math.ceil(total_samples/4)
+    print(total_samples, n_iterations)
+
+    for epoch in range(num_epochs):
+        for i, (inputs, labels) in enumerate(dataloader):
+            # forward, backward, update
+            if(i+1) % 5 == 0:
+                print(f'epoch {epoch+1}/{num_epochs}, step {i+1}/{n_iterations}, inputs{inputs.shape}')
+
+
 if __name__ == '__main__':
 
     # https: // www.youtube.com / watch?v = c36lUUr864M
@@ -348,4 +395,5 @@ if __name__ == '__main__':
     # learn_back_propagation()
     # learn_gradient_descent_torch()
     # learn_linear_regression()
-    learn_logistics_regression()
+    # learn_logistics_regression()
+    learn_dataset()
