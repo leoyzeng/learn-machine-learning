@@ -344,25 +344,48 @@ def learn_logistics_regression():
 
 def learn_dataset():
 
+    # dataset class, data loader, data transform
+
     class WineDataset(Dataset):
 
-        def __init__(self):
+        def __init__(self, transform=None):
             # data loading
             xy = np.loadtxt('./data/wine.csv', delimiter=",", dtype=np.float32, skiprows=1)
-            self.x = torch.from_numpy(xy[:,1:])
-            self.y = torch.from_numpy(xy[:,[0]]) # n_samples, 1
+            self.x = xy[:,1:]
+            self.y = xy[:,[0]] # n_samples, 1
             self.n_samples = xy.shape[0]
+
+            self.transform = transform
 
         def __getitem__(self, index):
             # return 1 data point
-            return self.x[index], self.y[index]
+            sample = self.x[index], self.y[index]
+            if self.transform:
+                sample = self.transform(sample)
+
+            return sample
 
         def __len__(self):
             # length of dataset
             return self.n_samples
 
-    dataset = WineDataset()
-    first_data = dataset[0]
+    class ToTensor:
+        # class to transform data, we can pass this into data class
+        def __call__(self, sample):
+            inputs, targets = sample
+            return torch.from_numpy(inputs), torch.from_numpy(targets)
+
+    class MulTransform:
+        def __init__(self, factor):
+            self.factor = factor
+
+        def __call__(self, sample):
+            inputs, target = sample
+            inputs *= self.factor
+            return inputs, target
+
+    dataset = WineDataset(transform=MulTransform(2)) # load dataset
+    first_data = dataset[0] # get data
     features,labels = first_data
     print(features, labels)
 
