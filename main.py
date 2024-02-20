@@ -408,6 +408,33 @@ def learn_dataset():
             if(i+1) % 5 == 0:
                 print(f'epoch {epoch+1}/{num_epochs}, step {i+1}/{n_iterations}, inputs{inputs.shape}')
 
+def learn_activation():
+
+    class NeuralNet(nn.Module):
+        def __init__(self, input_size, hidden_size):
+            super(NeuralNet, self).__init__()
+            self.linear1 = nn.Linear(input_size, hidden_size) # define layers and activation function 
+            self.relu = nn.ReLU()
+            self.linear2 = nn.Linear(hidden_size, 1)
+            self.sigmoid = nn.Sigmoid()
+
+        def forward(self, x):
+            out = self.linear1(x)
+            out = self.relu(out)
+            out = self.linear2(out)
+            out = self.sigmoid(out)
+            return out
+
+    class NeuralNet2(nn.Module):
+        def __init__(self, input_size, hidden_size):
+            super(NeuralNet, self).__init__()
+            self.linear1 = nn.Linear(input_size, hidden_size)  # define layers
+            self.linear2 = nn.Linear(hidden_size, 1)
+
+        def forward(self, x):
+            out = torch.relu(self.linear1(x)) # apply activation function directly
+            out = torch.sigmoid(self.linear2(x))
+            return out
 
 if __name__ == '__main__':
 
@@ -419,4 +446,5 @@ if __name__ == '__main__':
     # learn_gradient_descent_torch()
     # learn_linear_regression()
     # learn_logistics_regression()
-    learn_dataset()
+    # learn_dataset()
+    learn_activation()
