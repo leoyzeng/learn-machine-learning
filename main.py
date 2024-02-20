@@ -3,6 +3,8 @@ import math
 import torch
 import torch.nn as nn
 import numpy as np
+import torchvision
+import torchvision.transforms as transforms
 from sklearn import datasets
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
@@ -413,7 +415,7 @@ def learn_activation():
     class NeuralNet(nn.Module):
         def __init__(self, input_size, hidden_size):
             super(NeuralNet, self).__init__()
-            self.linear1 = nn.Linear(input_size, hidden_size) # define layers and activation function 
+            self.linear1 = nn.Linear(input_size, hidden_size) # define layers and activation function
             self.relu = nn.ReLU()
             self.linear2 = nn.Linear(hidden_size, 1)
             self.sigmoid = nn.Sigmoid()
@@ -436,6 +438,96 @@ def learn_activation():
             out = torch.sigmoid(self.linear2(x))
             return out
 
+
+def learn_feed_forward():
+    # digit recognition
+
+    # device config
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # run on gpu if supported
+
+    # hyperparameters
+    input_size = 784 # input image is 28*28
+    hidden_size = 100
+    num_classes = 10
+    num_epochs = 2
+    batch_size = 100
+    learning_rate = 0.001
+
+    # import MNIST data
+    train_dataset = torchvision.datasets.MNIST(root='./data', train=True, transform=transforms.ToTensor(), download=True)
+    test_dataset = torchvision.datasets.MNIST(root='./data', train=False, transform=transforms.ToTensor(), download=False)
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
+
+    examples = iter(train_loader)
+    samples, labels = next(examples)
+    print(samples.shape, labels.shape)
+
+    for i in range(6): # show some examples of data
+        plt.subplot(2,3,i+1)
+        plt.imshow(samples[i][0], cmap='gray')
+    plt.draw() # plt.show will stop execution
+
+    class NeuralNet(nn.Module):
+        def __init__(self, input_size, hidden_size, num_classes):
+            super(NeuralNet, self).__init__()
+            self.input_size = input_size
+            self.l1 = nn.Linear(input_size, hidden_size) # define layers with relu and hidden layers
+            self.relu = nn.ReLU()
+            self.l2 = nn.Linear(hidden_size, num_classes)
+
+        def forward(self, x): # pass in x (1 input dataset)
+            out = self.l1(x)
+            out = self.relu(out)
+            out = self.l2(out) # no need for softmax as last layer, since we use cross entropy loss
+            return out
+
+    model = NeuralNet(input_size, hidden_size, num_classes).to(device)
+
+    # loss and optimizer
+    criterion = nn.CrossEntropyLoss() # cross entropy loss will apply softmax
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+    # training loop
+    n_total_steps = len(train_loader)
+    for epoch in range(num_epochs):
+        for i, (images, labels) in enumerate(train_loader):
+            # data is tuple of images and labels
+            # original shape = 100 * 1 * 28 * 28
+            # we need to convert to 100 * 784
+            images = images.reshape(-1, 28*28).to(device)
+            labels = labels.to(device)
+
+            # forward pass
+            outputs = model(images)
+            loss = criterion(outputs, labels) # predicted outputs and actual labels
+            # backward pass
+            optimizer.zero_grad()
+            loss.backward() # back propagation
+            optimizer.step() # update parameters
+
+            if i % 100 == 0: # print every 100 steps
+                print(f'epoch {epoch}/{num_epochs}, step{i}/{n_total_steps}, loss = {loss.item():.4f}')
+
+    # test
+    with torch.no_grad():
+        n_correct = 0
+        n_samples = 0
+        for images, labels in test_loader:
+            images = images.reshape(-1, 28*28).to(device)
+            labels = labels.to(device)
+            outputs = model(images)
+
+            # value, index
+            _, predictions = torch.max(outputs, 1)
+            n_samples += labels.shape[0]
+            n_correct += (predictions == labels).sum().item()
+
+        acc = 100.0 * n_correct / n_samples
+        print(f'accuracy {acc}')
+
+    print("finish")
+
 if __name__ == '__main__':
 
     # https: // www.youtube.com / watch?v = c36lUUr864M
@@ -447,4 +539,5 @@ if __name__ == '__main__':
     # learn_linear_regression()
     # learn_logistics_regression()
     # learn_dataset()
-    learn_activation()
+    # learn_activation()
+    learn_feed_forward()
