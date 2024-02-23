@@ -5,6 +5,7 @@ import torch.nn as nn
 import numpy as np
 import torchvision
 import torchvision.transforms as transforms
+import torch.functional as functional
 from sklearn import datasets
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
@@ -501,6 +502,7 @@ def learn_feed_forward():
             # forward pass
             outputs = model(images)
             loss = criterion(outputs, labels) # predicted outputs and actual labels
+
             # backward pass
             optimizer.zero_grad()
             loss.backward() # back propagation
@@ -526,7 +528,123 @@ def learn_feed_forward():
         acc = 100.0 * n_correct / n_samples
         print(f'accuracy {acc}')
 
-    print("finish")
+
+def learn_CNN():
+    # image classification
+
+    # device config
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # run on gpu if supported
+
+    # hyperparameters
+    num_classes = 10
+    num_epochs = 4
+    batch_size = 4
+    learning_rate = 0.001
+
+    # transform dataset to be tensors between -1, 1
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,0.5,0.5), (0.5,0.5,0.5))])
+
+    # CIFAR10: 60000 32x32 color images in 10 classes, with 6000 images per class
+    train_dataset = torchvision.datasets.CIFAR10(root='./data', train=True, transform=transform, download=True)
+    test_dataset = torchvision.datasets.CIFAR10(root='./data', train=False, transform=transform, download=False)
+    train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(dataset=test_dataset, batch_size=batch_size, shuffle=False)
+
+    classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+
+    def imshow(img):
+        img = img / 2 + 0.5  # unnormalize
+        npimg = img.numpy()
+        plt.imshow(np.transpose(npimg, (1, 2, 0)))
+        plt.draw()
+
+    # get some random training images
+    dataiter = iter(train_loader)
+    images, labels = next(dataiter)
+    # show images
+    imshow(torchvision.utils.make_grid(images))
+
+    class ConvNet(nn.Module):
+        def __init__(self):
+            super(ConvNet, self).__init__()
+            self.conv1 = nn.Conv2d(3, 6, 5) # 3 input, 6 output, 5 kernel
+            self.pool = nn.MaxPool2d(2, 2)
+            self.conv2 = nn.Conv2d(6, 16, 5)  # 6 input, 16 output, 5 kernel
+            self.fullConnected1 = nn.Linear(16*5*5, 120)
+            self.fullConnected2 = nn.Linear(120, 84)
+            self.fullConnected3 = nn.Linear(84, 10) # last layer has 10 outputs (1 for each class)
+
+        def forward(self, x):
+            x = self.pool(nn.functional.relu(self.conv1(x)))
+            x = self.pool(nn.functional.relu(self.conv2(x)))
+            x = x.view(-1, 16*5*5) # flatten
+            x = nn.functional.relu(self.fullConnected1(x))
+            x = nn.functional.relu(self.fullConnected2(x))
+            x = self.fullConnected3(x)
+            # no softmax, softmax is already included in loss
+            return x
+
+
+    model = ConvNet().to(device)
+
+    # loss and optimizer
+    criterion = nn.CrossEntropyLoss()  # cross entropy loss will apply softmax
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+
+    # training loop
+    n_total_steps = len(train_loader)
+    for epoch in range(num_epochs):
+        for i, (images, labels) in enumerate(train_loader):
+            # original shape: [4,3,32,32]
+            # input layer: 3 input channel, 6 output channels, 5 kernel size
+            images = images.to(device)
+            labels = labels.to(device)
+
+            # forward pass
+            outputs = model(images)
+            loss = criterion(outputs, labels)  # predicted outputs and actual labels
+
+            # backward pass
+            optimizer.zero_grad()
+            loss.backward()  # back propagation
+            optimizer.step()  # update parameters
+
+            if i % 100 == 0:  # print every 100 steps
+                print(f'epoch {epoch}/{num_epochs}, step{i}/{n_total_steps}, loss = {loss.item():.4f}')
+
+    print('Finished Training')
+    PATH = './cnn.pth'
+    torch.save(model.state_dict(), PATH)
+
+    # test
+    with torch.no_grad():
+        n_correct = 0
+        n_samples = 0
+        n_class_correct = [0 for i in range(10)]
+        n_class_samples = [0 for i in range(10)]
+        for images, labels in test_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            outputs = model(images)
+            # max returns (value ,index)
+            _, predicted = torch.max(outputs, 1)
+            n_samples += labels.size(0)
+            n_correct += (predicted == labels).sum().item()
+
+            for i in range(batch_size):
+                label = labels[i]
+                pred = predicted[i]
+                if (label == pred):
+                    n_class_correct[label] += 1
+                n_class_samples[label] += 1
+
+        acc = 100.0 * n_correct / n_samples
+        print(f'Accuracy of the network: {acc} %')
+
+        for i in range(10):
+            acc = 100.0 * n_class_correct[i] / n_class_samples[i]
+            print(f'Accuracy of {classes[i]}: {acc} %')
+
 
 if __name__ == '__main__':
 
@@ -540,4 +658,5 @@ if __name__ == '__main__':
     # learn_logistics_regression()
     # learn_dataset()
     # learn_activation()
-    learn_feed_forward()
+    # learn_feed_forward()
+    learn_CNN()
