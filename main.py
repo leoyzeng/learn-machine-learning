@@ -645,6 +645,87 @@ def learn_CNN():
             acc = 100.0 * n_class_correct[i] / n_class_samples[i]
             print(f'Accuracy of {classes[i]}: {acc} %')
 
+def learn_save_model():
+
+
+    # saving and loading complete model
+    # save
+    # torch.save(model, PATH)
+
+    # load
+    # model = torch.load(PATH)
+    # model.eval()
+
+
+    # save as state dictionary (better way)
+    # torch.save(model.state_dict(), PATH)
+
+    # model = Model(*args, **kwargs)
+    # model.load_state_dict(torch.load(PATH))
+    # model.eval()
+
+    # sample model
+    class Model(nn.Module):
+        def __init__(self, n_input_features):
+            super(Model, self).__init__()
+            self.linear = nn.Linear(n_input_features, 1)
+
+        def forward(self, x):
+            y_pred = torch.sigmoid(self.linear(x))
+            return y_pred
+
+    model = Model(n_input_features=6)
+
+    for param in model.parameters():
+        print(param)
+
+    # save complete model
+    # FILE = "model.pth"
+    # torch.save(model, FILE)
+
+    # loaded_model = torch.load(FILE)
+    # loaded_model.eval()
+    #
+    # for param in loaded_model.parameters():
+    #     print(param)
+
+    # save state dict
+    FILE = "model.pth"
+    torch.save(model.state_dict(), FILE)
+
+    print(model.state_dict())
+    loaded_model = Model(n_input_features=6)
+    loaded_model.load_state_dict(torch.load(FILE))  # it takes the loaded dictionary, not the path file itself
+    loaded_model.eval()
+
+    print(loaded_model.state_dict())
+
+    # load checkpoint
+    learning_rate = 0.01
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+
+    checkpoint = {
+        "epoch": 90,
+        "model_state": model.state_dict(),
+        "optim_state": optimizer.state_dict()
+    }
+    print(optimizer.state_dict())
+    FILE = "checkpoint.pth"
+    torch.save(checkpoint, FILE)
+
+    model = Model(n_input_features=6)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0)
+
+    checkpoint = torch.load(FILE)
+    model.load_state_dict(checkpoint['model_state'])
+    optimizer.load_state_dict(checkpoint['optim_state'])
+    epoch = checkpoint['epoch']
+
+    model.eval()
+    # model.train()
+
+    print(optimizer.state_dict())
+
 
 if __name__ == '__main__':
 
@@ -659,4 +740,5 @@ if __name__ == '__main__':
     # learn_dataset()
     # learn_activation()
     # learn_feed_forward()
-    learn_CNN()
+    # learn_CNN()
+    learn_save_model()
